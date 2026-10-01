@@ -1,0 +1,237 @@
+
+========================================================
+CONTROLLER: AccountController.java
+BASE: @RequestMapping("/accounts")
+  @GetMapping("/manage") |  | public String manage(Model model) {
+  @GetMapping("/open") |  | public String openAccountForm(Model model) {
+  @PostMapping("/open") |  | public String openAccount(@RequestParam String customerId,
+  @PostMapping("/request") |  | public String requestAccount(@RequestParam String accountType,
+  @PostMapping("/manage/create") |  | public String create(@RequestParam Long customerId, @RequestParam String accountType,
+  @PostMapping("/manage/{id}/request-update") |  | public String requestUpdate(@PathVariable Long id,
+  @PostMapping("/manage/{id}/approve") |  | public String approve(@PathVariable Long id, Authentication authentication) {
+  @PostMapping("/manage/{id}/reject") |  | public String reject(@PathVariable Long id, @RequestParam String reason, Authentication authentication) {
+  @PostMapping("/manage/{id}/freeze") |  | public String freeze(@PathVariable Long id, Authentication authentication, RedirectAttributes redirectAttributes) {
+  @PostMapping("/manage/{id}/unfreeze") |  | public String unfreeze(@PathVariable Long id, Authentication authentication, RedirectAttributes redirectAttributes) {
+  @PostMapping("/manage/{id}/request-close") |  | public String requestClose(@PathVariable Long id, Authentication authentication, RedirectAttributes redirectAttributes) {
+  @PostMapping("/manage/{id}/close") |  | public String close(@PathVariable Long id, Authentication authentication) {
+
+========================================================
+CONTROLLER: AdminController.java
+BASE: @RequestMapping("/admin")
+  @GetMapping("/dashboard") |  | public String adminDashboard(Model model) {
+  @GetMapping("/audit-logs") |  | public String auditLogs(Model model) {
+  @PostMapping("/audit-logs/{id}/request-delete") |  | public String requestAuditLogDeletion(@PathVariable Long id,
+  @GetMapping("/staff") |  | public String staff(Model model) {
+  @PostMapping("/users/{id}/toggle") |  | public String toggleUser(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @GetMapping("/settings") |  | public String settings(Model model) {
+  @PostMapping("/settings") |  | public String saveSettings(@RequestParam String otpExpiryMinutes,
+  @GetMapping("/sessions") |  | public String sessions(Model model) {
+  @PostMapping("/sessions/expire") |  | public String expireSession(@RequestParam String sessionId, RedirectAttributes ra) {
+  @GetMapping("/monitoring") |  | public String monitoring(Model model) {
+  @GetMapping("/backup") |  | public org.springframework.http.ResponseEntity<byte[]> backup() {
+  @GetMapping("/view-user-dashboard") |  | public String viewUserDashboard() {
+
+========================================================
+CONTROLLER: ApprovalController.java
+BASE: @RequestMapping({"/approvals", "/manager/approvals"})
+  @GetMapping |  | public String list(Model model, Authentication authentication) {
+  @PostMapping("/{id}/approve") |  | public String approve(@PathVariable Long id, @RequestParam(required = false) String remarks,
+  @PostMapping("/{id}/reject") |  | public String reject(@PathVariable Long id, @RequestParam String remarks,
+
+========================================================
+CONTROLLER: AuthController.java
+  @GetMapping("/login") |  | public String login(org.springframework.security.core.Authentication authentication) {
+  @GetMapping("/register") |  | public String registerForm(org.springframework.security.core.Authentication authentication, Model model) {
+  @PostMapping("/register") |  | public String register(@RequestParam String customerId,
+  @GetMapping("/forgot-password") |  | public String forgotPasswordForm() {
+  @PostMapping("/forgot-password") |  | public String forgotPassword(@RequestParam String email, Model model) {
+  @GetMapping("/reset-password") |  | public String resetPasswordForm(@RequestParam String token, Model model) {
+  @PostMapping("/reset-password") |  | public String resetPassword(@RequestParam String token,
+  @GetMapping("/login/otp") |  | public String loginOtp(org.springframework.security.core.Authentication authentication, Model model) {
+  @PostMapping("/login/otp/verify") |  | public String verifyLoginOtp(@RequestParam String otp, jakarta.servlet.http.HttpSession session,
+  @GetMapping("/login/otp/resend") |  | public String resendLoginOtp(org.springframework.security.core.Authentication authentication, Model model) {
+  @GetMapping("/access-denied") |  | public String accessDenied() {
+
+========================================================
+CONTROLLER: BankdashController.java
+  @GetMapping({"/bankdash", "/bankdash/"}) |  | public String redirectToOverview() {
+  @GetMapping("/bankdash/overview") |  | public String overview(Authentication authentication, Model model) {
+
+========================================================
+CONTROLLER: BeneficiaryController.java
+BASE: @RequestMapping("/customer/beneficiaries")
+  @GetMapping |  | public String list(Authentication authentication, Model model) {
+  @PostMapping |  | public String add(@RequestParam String beneficiaryName,
+  @PostMapping("/{id}/update") |  | public String update(@PathVariable Long id,
+  @PostMapping("/{id}/delete") |  | public String delete(@PathVariable Long id,
+
+========================================================
+CONTROLLER: BranchController.java
+BASE: @RequestMapping("/branches")
+  @GetMapping |  | public String list(Model model) {
+  @PostMapping |  | public String create(@RequestParam String code, @RequestParam String name, @RequestParam String address,
+  @PostMapping("/{id}") |  | public String update(@PathVariable Integer id, @RequestParam String name, @RequestParam String address,
+  @PostMapping("/{id}/delete") |  | public String delete(@PathVariable Integer id, Authentication authentication, RedirectAttributes ra) {
+
+========================================================
+CONTROLLER: ComplianceController.java
+BASE: @RequestMapping("/compliance")
+  @GetMapping("/dashboard") |  | public String dashboard(Model model) {
+  @PostMapping("/kyc/{id}/verify") |  | public String verifyKyc(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @PostMapping("/kyc/{id}/flag") |  | public String flagKyc(@PathVariable Long id, @RequestParam String reason, Authentication authentication, RedirectAttributes ra) {
+  @PostMapping("/documents/{id}/verify") |  | public String verifyDocument(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+
+========================================================
+CONTROLLER: CreController.java
+BASE: @RequestMapping("/cre")
+  @GetMapping("/dashboard") |  | public String dashboard(@RequestParam(required = false) String q, Model model) {
+  @PostMapping("/tickets") |  | public String createTicket(@RequestParam Long customerId,
+  @PostMapping("/tickets/{id}/status") |  | public String updateTicket(@PathVariable Long id,
+  @PostMapping("/communications") |  | public String logCommunication(@RequestParam Long customerId,
+  @PostMapping("/statements") |  | public String requestStatement(@RequestParam Long customerId,
+  @PostMapping("/statements/{id}/complete") |  | public String completeStatement(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @GetMapping("/customers/{id}/accounts") |  | public java.util.List<java.util.Map<String, Object>> accounts(@PathVariable Long id) {
+
+========================================================
+CONTROLLER: CustomerController.java
+BASE: @RequestMapping("/customer")
+  @GetMapping("/profile") |  | public String profile(Authentication authentication, Model model) {
+  @PostMapping("/profile") |  | public String updateProfile(@RequestParam String fullName,
+  @GetMapping("/change-password") |  | public String changePasswordForm() {
+  @PostMapping("/change-password") |  | public String changePassword(@RequestParam String currentPassword,
+  @GetMapping("/documents") |  | public String documents(Authentication authentication, Model model) {
+  @PostMapping("/documents") |  | public String uploadDocument(@RequestParam String documentType,
+  @PostMapping("/documents/{id}/delete") |  | public String deleteDocument(@PathVariable Long id,
+
+========================================================
+CONTROLLER: DashboardController.java
+  @GetMapping("/dashboard") |  | public String dashboard(Authentication authentication) {
+  @GetMapping("/customer/dashboard") |  | public String customerDashboard(Authentication authentication, Model model) {
+  @GetMapping("/officer/dashboard") |  | public String officerDashboard(Authentication authentication, Model model) {
+  @GetMapping("/customer-relations/dashboard") |  | public String relationsDashboard() {
+  @GetMapping("/manager/dashboard") |  | public String managerDashboard(Authentication authentication, Model model) {
+
+========================================================
+CONTROLLER: DemoAtmController.java
+BASE: @RequestMapping("/demo/atm")
+  @GetMapping |  | public String atmForm(Authentication authentication, Model model) {
+  @PostMapping |  | public String withdraw(@RequestParam Long accountId,
+
+========================================================
+CONTROLLER: DemoPaymentController.java
+BASE: @RequestMapping("/demo/payment")
+  @GetMapping |  | public String paymentForm(Authentication authentication, Model model) {
+  @PostMapping |  | public String processPayment(@RequestParam Long accountId,
+  @PostMapping("/otp") |  | public String verifyPaymentOtp(@RequestParam Long accountId,
+  @PostMapping("/otp/resend") |  | public String resendPaymentOtp(@RequestParam Long accountId,
+
+========================================================
+CONTROLLER: GlobalModelAttributes.java
+
+========================================================
+CONTROLLER: HomeController.java
+  @GetMapping({"/", "/home"}) |  | public String home(Authentication authentication) {
+
+========================================================
+CONTROLLER: LoanController.java
+BASE: @RequestMapping("/loans")
+  @GetMapping |  | public String myLoans(Authentication authentication, Model model) {
+  @GetMapping("/apply") |  | public String applyForm() {
+  @PostMapping("/apply") |  | public String apply(@RequestParam String loanType, @RequestParam BigDecimal amount,
+  @PostMapping("/{id}/cancel") |  | public String cancelApplication(@PathVariable Long id, Authentication authentication,
+  @GetMapping("/review") |  | public String reviewQueue(Model model) {
+  @PostMapping("/{id}/verify") |  | public String verify(@PathVariable Long id, @RequestParam(required = false) String remarks,
+  @PostMapping("/{id}/compliance") |  | public String complianceCheck(@PathVariable Long id, @RequestParam(required = false) String remarks,
+  @PostMapping("/{id}/approve") |  | public String approve(@PathVariable Long id, Authentication authentication) {
+  @PostMapping("/{id}/reject") |  | public String reject(@PathVariable Long id, @RequestParam String reason, Authentication authentication) {
+
+========================================================
+CONTROLLER: NotificationController.java
+  @GetMapping("/notifications") |  | public String list(Authentication authentication, Model model) {
+  @PostMapping("/notifications/{id}/read") |  | public String markRead(@PathVariable Long id, Authentication authentication) {
+  @PostMapping("/notifications/{id}/delete") |  | public String delete(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @PostMapping("/notifications/preferences") |  | public String updatePreferences(@RequestParam(defaultValue = "false") boolean emailNotifications,
+
+========================================================
+CONTROLLER: OfficerController.java
+BASE: @RequestMapping("/officer")
+  @GetMapping("/customers") |  | public String customers(@RequestParam(required = false) String q, Model model) {
+  @PostMapping("/customers/create") |  | public String createCustomer(@RequestParam String fullName,
+  @PostMapping("/customers/{id}/upload-document") |  | public String uploadDocument(@PathVariable Long id,
+  @GetMapping("/customers/{id}") |  | public String customerDetail(@PathVariable Long id, Model model) {
+  @PostMapping("/customers/{id}/request-update") |  | public String requestCustomerUpdate(@PathVariable Long id,
+  @PostMapping("/customers/{id}/request-deletion") |  | public String requestCustomerDeletion(@PathVariable Long id, @RequestParam(required = false) String reason,
+  @GetMapping("/transfers") |  | public String transfers(Model model) {
+  @PostMapping("/transfers/{id}/update") |  | public String updateTransfer(@PathVariable Long id,
+  @PostMapping("/transfers/{id}/approve") |  | public String approveTransfer(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @PostMapping("/transfers/{id}/cancel") |  | public String cancelTransfer(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @GetMapping("/corrections") |  | public String corrections(Model model) {
+  @PostMapping("/corrections") |  | public String submitCorrection(@RequestParam Long transactionId,
+  @PostMapping("/corrections/request-delete") |  | public String requestTxnDeletion(@RequestParam Long transactionId,
+  @GetMapping("/templates") |  | public String templates(Model model) {
+  @PostMapping("/templates/create") |  | public String createTemplate(@RequestParam String templateKey,
+  @PostMapping("/templates/{id}") |  | public String updateTemplate(@PathVariable Long id,
+  @PostMapping("/templates/{id}/delete") |  | public String deleteTemplate(@PathVariable Long id,
+  @GetMapping("/reports") |  | public String reports() {
+
+========================================================
+CONTROLLER: OtpApiController.java
+BASE: @RequestMapping("/api/auth")
+  @PostMapping("/send-otp") |  | public ResponseEntity<Map<String, Object>> sendOtp(@RequestBody Map<String, String> request) {
+  @PostMapping("/verify-otp") |  | public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> request) {
+  @PostMapping("/resend-otp") |  | public ResponseEntity<Map<String, Object>> resendOtp(@RequestBody Map<String, String> request) {
+
+========================================================
+CONTROLLER: ReportController.java
+BASE: @RequestMapping("/reports")
+  @GetMapping("/statement/download") |  | public ResponseEntity<InputStreamResource> downloadStatement(Authentication authentication) {
+  @GetMapping("/transactions/daily") |  | public ResponseEntity<InputStreamResource> dailyTransactionsReport() {
+  @GetMapping("/accounts/active") |  | public ResponseEntity<InputStreamResource> activeAccountsReport() {
+  @GetMapping("/accounts/frozen") |  | public ResponseEntity<InputStreamResource> frozenAccountsReport() {
+  @GetMapping("/audit/logs") |  | public ResponseEntity<InputStreamResource> auditLogsReport() {
+  @GetMapping("/transactions/daily/csv") |  | public ResponseEntity<byte[]> dailyTransactionsCsv() {
+  @GetMapping("/accounts/active/csv") |  | public ResponseEntity<byte[]> activeAccountsCsv() {
+  @GetMapping("/accounts/frozen/csv") |  | public ResponseEntity<byte[]> frozenAccountsCsv() {
+  @GetMapping("/audit/logs/csv") |  | public ResponseEntity<byte[]> auditLogsCsv() {
+  @GetMapping |  | public String reportsHub() {
+  @GetMapping("/manage") |  | public String manageReports(Model model) {
+  @PostMapping("/draft") |  | public String createDraft(@RequestParam String name, @RequestParam String type,
+  @PostMapping("/{id}/update") |  | public String updateDraft(@PathVariable Long id, @RequestParam String name, @RequestParam String type,
+  @PostMapping("/{id}/submit-publish") |  | public String submitForPublish(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @PostMapping("/{id}/request-archive") |  | public String requestArchive(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @PostMapping("/{id}/request-delete") |  | public String requestDelete(@PathVariable Long id, Authentication authentication, RedirectAttributes ra) {
+  @GetMapping("/transactions/weekly") |  | public ResponseEntity<InputStreamResource> weeklyTransactionsReport() {
+  @GetMapping("/transactions/monthly") |  | public ResponseEntity<InputStreamResource> monthlyTransactionsReport() {
+  @GetMapping("/loans/status") |  | public ResponseEntity<InputStreamResource> loanStatusReport() {
+  @GetMapping("/branch/performance") |  | public ResponseEntity<InputStreamResource> branchPerformanceReport() {
+  @GetMapping("/customers/registrations") |  | public ResponseEntity<InputStreamResource> customerRegistrationsReport() {
+  @GetMapping("/officer/performance") |  | public ResponseEntity<InputStreamResource> officerPerformanceReport() {
+  @GetMapping("/transfers/summary") |  | public ResponseEntity<InputStreamResource> transferSummaryReport() {
+  @GetMapping("/audit-logs/download") |  | public ResponseEntity<InputStreamResource> auditLogsAlias() {
+
+========================================================
+CONTROLLER: RestApiController.java
+BASE: @RequestMapping("/api")
+  @GetMapping("/health") |  | public Map<String, Object> health() {
+  @GetMapping("/notifications/unread-count") |  | public ResponseEntity<Map<String, Object>> unread(Authentication authentication) {
+  @GetMapping("/transactions/recent") |  | public ResponseEntity<?> recent(Authentication authentication) {
+
+========================================================
+CONTROLLER: StaffController.java
+BASE: @RequestMapping("/admin/staff")
+  @PostMapping("/create") |  | public String createStaff(@RequestParam String fullName,
+  @PostMapping("/request-create") |  | public String requestCreateStaff(@RequestParam String fullName,
+  @PostMapping("/{id}/request-role-update") |  | public String requestRoleUpdate(@PathVariable Long id, @RequestParam Role newRole,
+  @PostMapping("/{id}/request-deletion") |  | public String requestDeletion(@PathVariable Long id, @RequestParam(required = false) String reason,
+
+========================================================
+CONTROLLER: TransactionHistoryController.java
+  @GetMapping("/history") |  | public String history(@RequestParam(required = false) Long accountId,
+
+========================================================
+CONTROLLER: TransferController.java
+BASE: @RequestMapping("/transfer")
+  @GetMapping |  | public String transferForm(Authentication authentication, Model model) {
+  @PostMapping |  | public String initiate(@RequestParam Long sourceAccountId,
+  @PostMapping("/otp") |  | public String verifyOtp(@RequestParam Long transactionId,
+  @PostMapping("/otp/resend") |  | public String resendOtp(@RequestParam Long transactionId,
