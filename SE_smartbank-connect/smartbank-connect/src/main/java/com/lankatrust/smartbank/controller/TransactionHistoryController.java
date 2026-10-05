@@ -4,7 +4,6 @@ import com.lankatrust.smartbank.entity.User;
 import com.lankatrust.smartbank.service.AccountService;
 import com.lankatrust.smartbank.service.TransactionService;
 import com.lankatrust.smartbank.service.UserService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,12 +13,19 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.time.LocalDateTime;
 
 @Controller
-@RequiredArgsConstructor
 public class TransactionHistoryController {
 
     private final TransactionService transactionService;
     private final AccountService accountService;
     private final UserService userService;
+
+    public TransactionHistoryController(TransactionService transactionService,
+                                        AccountService accountService,
+                                        UserService userService) {
+        this.transactionService = transactionService;
+        this.accountService = accountService;
+        this.userService = userService;
+    }
 
     @GetMapping("/history")
     public String history(@RequestParam(required = false) Long accountId,
@@ -45,15 +51,24 @@ public class TransactionHistoryController {
             targetAccountId = accounts.get(0).getId();
         }
 
+        model.addAttribute("startDate", startDate != null ? startDate.trim() : "");
+        model.addAttribute("endDate", endDate != null ? endDate.trim() : "");
+
         if (targetAccountId != null) {
-            if (startDate != null && endDate != null && !startDate.isBlank() && !endDate.isBlank()) {
+            boolean hasStart = startDate != null && !startDate.isBlank();
+            boolean hasEnd = endDate != null && !endDate.isBlank();
+
+            if (hasStart || hasEnd) {
                 try {
-                    LocalDateTime start = LocalDateTime.parse(startDate.trim() + "T00:00:00");
-                    LocalDateTime end = LocalDateTime.parse(endDate.trim() + "T23:59:59");
-                    if (start.isAfter(end)) {
-                        model.addAttribute("error", "Start date cannot be after end date.");
+                    java.time.LocalDate startD = hasStart ? java.time.LocalDate.parse(startDate.trim()) : null;
+                    java.time.LocalDate endD = hasEnd ? java.time.LocalDate.parse(endDate.trim()) : null;
+
+                    if (startD != null && endD != null && startD.isAfter(endD)) {
+                        model.addAttribute("error", "The \"To\" date must not be earlier than the \"From\" date.");
                         model.addAttribute("transactions", java.util.Collections.emptyList());
                     } else {
+                        LocalDateTime start = (startD != null) ? startD.atStartOfDay() : java.time.LocalDate.of(1970, 1, 1).atStartOfDay();
+                        LocalDateTime end = (endD != null) ? endD.atTime(23, 59, 59) : LocalDateTime.now().plusYears(100);
                         model.addAttribute("transactions", transactionService.filterHistory(targetAccountId, start, end));
                     }
                 } catch (Exception ex) {

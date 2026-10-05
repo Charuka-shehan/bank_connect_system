@@ -4,6 +4,7 @@ import com.lankatrust.smartbank.entity.*;
 import com.lankatrust.smartbank.repository.AccountRepository;
 import com.lankatrust.smartbank.repository.AtmCardRepository;
 import com.lankatrust.smartbank.repository.BranchRepository;
+import com.lankatrust.smartbank.repository.CustomerRepository;
 import com.lankatrust.smartbank.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,6 +23,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final AccountRepository accountRepository;
     private final AtmCardRepository atmCardRepository;
     private final BranchRepository branchRepository;
+    private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
 
@@ -31,12 +33,14 @@ public class DatabaseSeeder implements CommandLineRunner {
                           AccountRepository accountRepository,
                           AtmCardRepository atmCardRepository,
                           BranchRepository branchRepository,
+                          CustomerRepository customerRepository,
                           PasswordEncoder passwordEncoder,
                           JdbcTemplate jdbcTemplate) {
         this.userRepository = userRepository;
         this.accountRepository = accountRepository;
         this.atmCardRepository = atmCardRepository;
         this.branchRepository = branchRepository;
+        this.customerRepository = customerRepository;
         this.passwordEncoder = passwordEncoder;
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -57,6 +61,21 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .build()));
 
         if (userRepository.count() == 0) {
+            try {
+                jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+                jdbcTemplate.execute("TRUNCATE TABLE approval_requests");
+                jdbcTemplate.execute("TRUNCATE TABLE atm_cards");
+                jdbcTemplate.execute("TRUNCATE TABLE accounts");
+                jdbcTemplate.execute("TRUNCATE TABLE customers");
+                jdbcTemplate.execute("TRUNCATE TABLE officers");
+                jdbcTemplate.execute("TRUNCATE TABLE user_roles");
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(DatabaseSeeder.class)
+                        .warn("[DATABASE SEEDER] Orphan cleanup notice: {}", e.getMessage());
+            } finally {
+                jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+            }
+
             User manager = saveUser(User.builder()
                     .fullName("Nadeesha Perera")
                     .email("rscharukashehan@gmail.com")
@@ -123,7 +142,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .role(Role.CUSTOMER)
                     .enabled(true)
                     .createdAt(LocalDateTime.now())
-                    .customerId("CUST100001")
+                    .customerId(generateUniqueCustomerId())
                     .dob(LocalDate.of(2002, 5, 20))
                     .address("123, Galle Road, Colombo 03")
                     .kycStatus("APPROVED")
@@ -200,7 +219,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                     .role(Role.CUSTOMER)
                     .enabled(true)
                     .createdAt(LocalDateTime.now())
-                    .customerId("CUST100002")
+                    .customerId(generateUniqueCustomerId())
                     .dob(LocalDate.of(1995, 3, 15))
                     .address("45, High Level Road, Colombo 05")
                     .kycStatus("APPROVED")
@@ -302,7 +321,74 @@ public class DatabaseSeeder implements CommandLineRunner {
             org.slf4j.LoggerFactory.getLogger(DatabaseSeeder.class)
                     .info("[DATABASE SEEDER] Seeded paramihimaya500@gmail.com.");
         }
+        seedAdditionalCustomerAccounts(branch);
         seedInitialApprovalRequests();
+    }
+
+    private void seedAdditionalCustomerAccounts(Branch branch) {
+        String[][] additionalCustomers = new String[][]{
+                {"Udara Weerasinghe", "udara10.weerasinghe@gmail.com", "0773117371", "199712340001", "Civil Engineer", "120000.00"},
+                {"Udara Weerasingha", "udara.weerasingha02@gmail.com", "0773117372", "199812340002", "Financial Analyst", "135000.00"},
+                {"Udara W. Weerasingha", "udarawweerasingha23@gmail.com", "0773117373", "199912340003", "Software Developer", "160000.00"},
+                {"Fitness Lifestyle", "loverfitness306@gmail.com", "0773117374", "199512340004", "Fitness Consultant", "110000.00"},
+                {"Kiriarachchige Weerasinghe", "kiriarachchigeweerasinghe@gmail.com", "0773117375", "199412340005", "Operations Manager", "175000.00"}
+        };
+
+        for (String[] custData : additionalCustomers) {
+            String name = custData[0];
+            String email = custData[1];
+            String phone = custData[2];
+            String nic = custData[3];
+            String occupation = custData[4];
+            BigDecimal income = new BigDecimal(custData[5]);
+
+            if (userRepository.findByEmail(email).isEmpty()) {
+                Customer customer = (Customer) saveUser(Customer.builder()
+                        .fullName(name)
+                        .email(email)
+                        .password(passwordEncoder.encode("Customer@123"))
+                        .phoneNumber(phone)
+                        .nic(nic)
+                        .role(Role.CUSTOMER)
+                        .enabled(true)
+                        .createdAt(LocalDateTime.now())
+                        .customerId(generateUniqueCustomerId())
+                        .dob(LocalDate.of(1996, 1, 1))
+                        .address("Colombo, Sri Lanka")
+                        .kycStatus("APPROVED")
+                        .branch(branch)
+                        .build(), 1);
+
+                Account account = Account.builder()
+                        .accountNumber(generateAccountNumber())
+                        .customer(customer)
+                        .accountType("SAVINGS")
+                        .balance(new BigDecimal("50000.00"))
+                        .initialDeposit(new BigDecimal("50000.00"))
+                        .status(AccountStatus.ACTIVE)
+                        .branch(branch)
+                        .occupation(occupation)
+                        .monthlyIncome(income)
+                        .nomineeName("Family Member")
+                        .nomineeRelationship("Spouse")
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+                account = accountRepository.save(account);
+
+                AtmCard atmCard = AtmCard.builder()
+                        .account(account)
+                        .cardNumber(generateCardNumber())
+                        .cvvHash(passwordEncoder.encode(String.format("%03d", RANDOM.nextInt(1000))))
+                        .expiryDate(LocalDate.now().plusYears(5).withDayOfMonth(1))
+                        .status("ACTIVE")
+                        .issuedAt(LocalDateTime.now())
+                        .build();
+                atmCardRepository.save(atmCard);
+                org.slf4j.LoggerFactory.getLogger(DatabaseSeeder.class)
+                        .info("[DATABASE SEEDER] Seeded additional customer: {}", email);
+            }
+        }
     }
 
     private void seedInitialApprovalRequests() {
@@ -344,6 +430,14 @@ public class DatabaseSeeder implements CommandLineRunner {
         } catch (Exception ignored) {
         }
         return saved;
+    }
+
+    private String generateUniqueCustomerId() {
+        int sequence = 1;
+        while (customerRepository.existsByCustomerId(String.format("CUST%06d", 100000 + sequence))) {
+            sequence++;
+        }
+        return String.format("CUST%06d", 100000 + sequence);
     }
 
     private String generateAccountNumber() {

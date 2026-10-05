@@ -7,7 +7,6 @@ import com.lankatrust.smartbank.service.NotificationService;
 import com.lankatrust.smartbank.service.OtpService;
 import com.lankatrust.smartbank.service.SettingsService;
 import com.lankatrust.smartbank.util.EmailTemplates;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,7 +21,6 @@ import java.time.LocalDateTime;
  * Handles generation, verification, and security for all sensitive operations.
  */
 @Service
-@RequiredArgsConstructor
 public class OtpServiceImpl implements OtpService {
     
     private final UserRepository userRepository;
@@ -30,6 +28,18 @@ public class OtpServiceImpl implements OtpService {
     private final NotificationService notificationService;
     private final SettingsService settingsService;
     private final PasswordEncoder passwordEncoder;
+    
+    public OtpServiceImpl(UserRepository userRepository,
+                          OtpVerificationRepository otpVerificationRepository,
+                          NotificationService notificationService,
+                          SettingsService settingsService,
+                          PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.otpVerificationRepository = otpVerificationRepository;
+        this.notificationService = notificationService;
+        this.settingsService = settingsService;
+        this.passwordEncoder = passwordEncoder;
+    }
     
     @Value("${security.otp.threshold:50000.00}")
     private BigDecimal otpThreshold;
@@ -130,6 +140,20 @@ public class OtpServiceImpl implements OtpService {
                 operationType, settingsService.otpExpiryMinutes());
         logger.info("[DEV/SANDBOX OTP] Verification code for {}: {}", email, otp);
         
+        // Output OTP to command line / console for testing and debugging
+        System.out.println();
+        System.out.println("================================================================================");
+        System.out.println(" >>> [OTP CONSOLE] VERIFICATION CODE GENERATED <<<");
+        System.out.println(" Recipient Email : " + email);
+        System.out.println(" Operation Type  : " + operationType + " (" + operationLabel + ")");
+        System.out.println(" OTP Code        : " + otp);
+        System.out.println(" Valid For       : " + settingsService.otpExpiryMinutes() + " minute(s)");
+        System.out.println(" Generated At    : " + LocalDateTime.now());
+        System.out.println("================================================================================");
+        System.out.println();
+        System.out.flush();
+
+        // Send OTP via email (existing functionality preserved)
         notificationService.sendHtml(recipient, subject, html,
                 "Your verification code is: " + otp + "\nValid for " + 
                 settingsService.otpExpiryMinutes() + " minutes.\nDo not share this code.");
@@ -188,10 +212,13 @@ public class OtpServiceImpl implements OtpService {
         // Verify OTP
         boolean matches = passwordEncoder.matches(otp, verification.getOtpHash());
         if (matches) {
+            System.out.println("[OTP CONSOLE] OTP verified successfully for: " + email + " at " + LocalDateTime.now());
             verification.setVerified(true);
             verification.setVerifiedAt(LocalDateTime.now());
             otpVerificationRepository.save(verification);
             return true;
+        } else {
+            System.out.println("[OTP CONSOLE] OTP verification failed for: " + email + " (Attempt " + verification.getAttempts() + "/" + maxAttempts + ")");
         }
         
         return false;

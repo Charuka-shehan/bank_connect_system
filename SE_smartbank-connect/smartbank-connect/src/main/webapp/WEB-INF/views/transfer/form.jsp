@@ -93,7 +93,7 @@
                         <div class="mt-2">
                             <small class="form-text text-muted">
                                 Minimum: Rs. 10.00 | 
-                                Transfers above Rs. <fmt:formatNumber value="${otpThreshold}"/> require OTP verification
+                                Beneficiary transfers and high-value transfers require OTP verification
                             </small>
                             <div id="amountWarning" class="alert alert-warning py-2 mt-2" style="display:none;">
                                 <i class="bi bi-shield-check me-2"></i>
@@ -168,12 +168,22 @@
     }
 
     // Validate and show/hide OTP warning
-    amountInput.addEventListener('change', function() {
-        if (this.value && parseFloat(this.value) > otpThreshold) {
+    function checkOtpRequirement() {
+        const amount = parseFloat(amountInput.value);
+        const beneficiary = beneficiaryInput.value ? beneficiaryInput.value.trim() : '';
+        if (beneficiary.length > 0 || (!isNaN(amount) && amount > otpThreshold)) {
             amountWarning.style.display = 'block';
         } else {
             amountWarning.style.display = 'none';
         }
+    }
+
+    amountInput.addEventListener('input', function() {
+        checkOtpRequirement();
+        updateSummary();
+    });
+    beneficiaryInput.addEventListener('input', function() {
+        checkOtpRequirement();
         updateSummary();
     });
 
@@ -181,15 +191,14 @@
     function updateSummary() {
         const amount = amountInput.value;
         const sourceId = sourceAccountSelect.value;
-        const beneficiary = beneficiaryInput.value;
+        const beneficiary = beneficiaryInput.value ? beneficiaryInput.value.trim() : '';
 
         if (amount && sourceId && beneficiary) {
             document.getElementById('summaryFrom').textContent = sourceAccountSelect.options[sourceAccountSelect.selectedIndex].text;
             document.getElementById('summaryBeneficiary').textContent = beneficiary;
             document.getElementById('summaryAmount').textContent = 'Rs. ' + parseFloat(amount).toFixed(2);
-            document.getElementById('summarySecurity').innerHTML = parseFloat(amount) > otpThreshold 
-                ? '<span class="text-success"><i class="bi bi-shield-check"></i> Email OTP Required</span>'
-                : '<span class="text-muted">No additional verification</span>';
+            document.getElementById('summarySecurity').innerHTML = 
+                '<span class="text-success"><i class="bi bi-shield-check"></i> Email OTP Required</span>';
             summaryCard.style.display = 'block';
         } else {
             summaryCard.style.display = 'none';

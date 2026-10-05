@@ -3,7 +3,6 @@ package com.lankatrust.smartbank.controller;
 import com.lankatrust.smartbank.entity.User;
 import com.lankatrust.smartbank.service.*;
 import com.lankatrust.smartbank.dto.UserDto;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -11,7 +10,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
-@RequiredArgsConstructor
 public class DashboardController {
 
     private final UserService userService;
@@ -21,6 +19,22 @@ public class DashboardController {
     private final LoanService loanService;
     private final AtmCardService atmCardService;
     private final ApprovalService approvalService;
+
+    public DashboardController(UserService userService,
+                               NotificationService notificationService,
+                               AccountService accountService,
+                               TransactionService transactionService,
+                               LoanService loanService,
+                               AtmCardService atmCardService,
+                               ApprovalService approvalService) {
+        this.userService = userService;
+        this.notificationService = notificationService;
+        this.accountService = accountService;
+        this.transactionService = transactionService;
+        this.loanService = loanService;
+        this.atmCardService = atmCardService;
+        this.approvalService = approvalService;
+    }
 
     @GetMapping("/dashboard")
     public String dashboard(Authentication authentication) {
@@ -102,7 +116,8 @@ public class DashboardController {
 
         var pendingLoansList = allLoans.stream()
                 .filter(l -> l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.APPROVED
-                        && l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.REJECTED)
+                        && l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.REJECTED
+                        && l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.CANCELLED)
                 .toList();
         model.addAttribute("pendingLoans", pendingLoansList.size());
         model.addAttribute("pendingLoansList", pendingLoansList.stream().limit(5).toList());
@@ -112,9 +127,9 @@ public class DashboardController {
         model.addAttribute("pendingApprovalsList", pendingApprovals.stream().limit(5).toList());
 
         // Account type breakdown
-        long savingsCount = allAccounts.stream().filter(a -> "SAVINGS".equalsIgnoreCase(a.getAccountType())).count();
-        long currentCount = allAccounts.stream().filter(a -> "CURRENT".equalsIgnoreCase(a.getAccountType())).count();
-        long fdCount = allAccounts.stream().filter(a -> "FIXED_DEPOSIT".equalsIgnoreCase(a.getAccountType())).count();
+        long savingsCount = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("SAVINGS")).count();
+        long currentCount = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("CURRENT")).count();
+        long fdCount = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("FIXED_DEPOSIT")).count();
         model.addAttribute("savingsCount", savingsCount);
         model.addAttribute("currentCount", currentCount);
         model.addAttribute("fdCount", fdCount);
@@ -122,7 +137,7 @@ public class DashboardController {
         // Loan portfolio stats
         long loanApproved = allLoans.stream().filter(l -> l.getStatus() == com.lankatrust.smartbank.entity.LoanStatus.APPROVED).count();
         long loanRejected = allLoans.stream().filter(l -> l.getStatus() == com.lankatrust.smartbank.entity.LoanStatus.REJECTED).count();
-        long loanPending = allLoans.size() - loanApproved - loanRejected;
+        long loanPending = pendingLoansList.size();
         model.addAttribute("loanApprovedCount", loanApproved);
         model.addAttribute("loanRejectedCount", loanRejected);
         model.addAttribute("loanPendingCount", loanPending);
@@ -132,7 +147,7 @@ public class DashboardController {
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
         model.addAttribute("totalLoanAmount", totalLoanAmount);
 
-        // 24h Transactions
+        // 24h Transactions (Today)
         java.time.LocalDateTime startOfDay = java.time.LocalDateTime.of(java.time.LocalDate.now(), java.time.LocalTime.MIN);
         long todayTxnsCount = allTxns.stream()
                 .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().isAfter(startOfDay))
@@ -140,7 +155,8 @@ public class DashboardController {
         model.addAttribute("todayTransactions", todayTxnsCount);
 
         java.math.BigDecimal todayVolume = allTxns.stream()
-                .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().isAfter(startOfDay))
+                .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().isAfter(startOfDay)
+                        && t.getStatus() == com.lankatrust.smartbank.entity.TransactionStatus.COMPLETED)
                 .map(com.lankatrust.smartbank.entity.Transaction::getAmount)
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
         model.addAttribute("todayVolume", todayVolume);
@@ -152,6 +168,126 @@ public class DashboardController {
         buildManagerChartData(model, allTxns, allAccounts, allLoans);
 
         return "manager-dashboard";
+    }
+
+    @GetMapping("/manager/api/chart-data")
+    @PreAuthorize("hasRole('BANK_MANAGER')")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> managerChartData() {
+        var allAccounts = accountService.getAll();
+        var allLoans = loanService.getAll();
+        var allTxns = transactionService.getAll();
+        var allCustomers = userService.findByRole(com.lankatrust.smartbank.entity.Role.CUSTOMER);
+
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+
+        // 7-day transaction velocity
+        java.util.List<String> dayLabels = new java.util.ArrayList<>();
+        java.util.List<Long> dayCounts = new java.util.ArrayList<>();
+        java.util.List<java.math.BigDecimal> dayVolumes = new java.util.ArrayList<>();
+        java.time.format.DateTimeFormatter dayFmt = java.time.format.DateTimeFormatter.ofPattern("dd MMM");
+
+        for (int i = 6; i >= 0; i--) {
+            java.time.LocalDate day = java.time.LocalDate.now().minusDays(i);
+            long count = allTxns.stream()
+                    .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().isEqual(day))
+                    .count();
+            java.math.BigDecimal vol = allTxns.stream()
+                    .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().isEqual(day)
+                            && t.getStatus() == com.lankatrust.smartbank.entity.TransactionStatus.COMPLETED)
+                    .map(com.lankatrust.smartbank.entity.Transaction::getAmount)
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            dayLabels.add(day.format(dayFmt));
+            dayCounts.add(count);
+            dayVolumes.add(vol);
+        }
+        data.put("dailyTxnLabels", dayLabels);
+        data.put("dailyTxnCounts", dayCounts);
+        data.put("dailyTxnVolumes", dayVolumes);
+
+        // 6-month monthly cash flow
+        java.util.List<String> monthLabels = new java.util.ArrayList<>();
+        java.util.List<java.math.BigDecimal> monthlyDeposits = new java.util.ArrayList<>();
+        java.util.List<java.math.BigDecimal> monthlyWithdrawals = new java.util.ArrayList<>();
+        java.time.format.DateTimeFormatter monthFmt = java.time.format.DateTimeFormatter.ofPattern("MMM yyyy");
+
+        java.math.BigDecimal totalDeposits = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal totalWithdrawals = java.math.BigDecimal.ZERO;
+
+        for (int i = 5; i >= 0; i--) {
+            java.time.YearMonth ym = java.time.YearMonth.now().minusMonths(i);
+            monthLabels.add(ym.format(monthFmt));
+
+            java.math.BigDecimal dep = allTxns.stream()
+                    .filter(t -> t.getType() == com.lankatrust.smartbank.entity.TransactionType.DEPOSIT
+                            && t.getStatus() == com.lankatrust.smartbank.entity.TransactionStatus.COMPLETED
+                            && t.getCreatedAt() != null && java.time.YearMonth.from(t.getCreatedAt()).equals(ym))
+                    .map(com.lankatrust.smartbank.entity.Transaction::getAmount)
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            monthlyDeposits.add(dep);
+            totalDeposits = totalDeposits.add(dep);
+
+            java.math.BigDecimal wdr = allTxns.stream()
+                    .filter(t -> t.getType() == com.lankatrust.smartbank.entity.TransactionType.WITHDRAWAL
+                            && t.getStatus() == com.lankatrust.smartbank.entity.TransactionStatus.COMPLETED
+                            && t.getCreatedAt() != null && java.time.YearMonth.from(t.getCreatedAt()).equals(ym))
+                    .map(com.lankatrust.smartbank.entity.Transaction::getAmount)
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            monthlyWithdrawals.add(wdr);
+            totalWithdrawals = totalWithdrawals.add(wdr);
+        }
+        data.put("monthLabels", monthLabels);
+        data.put("monthlyDepositData", monthlyDeposits);
+        data.put("monthlyWithdrawalData", monthlyWithdrawals);
+        data.put("isNetPositiveLiquidity", totalDeposits.compareTo(totalWithdrawals) >= 0);
+
+        // Account Portfolio breakdown
+        long savings = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("SAVINGS")).count();
+        long current = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("CURRENT")).count();
+        long fd = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("FIXED_DEPOSIT")).count();
+        data.put("accountTypeDistribution", java.util.List.of(savings, current, fd));
+        data.put("savingsCount", savings);
+        data.put("currentCount", current);
+        data.put("fdCount", fd);
+
+        // Loan Portfolio breakdown
+        long approvedLoans = allLoans.stream().filter(l -> l.getStatus() == com.lankatrust.smartbank.entity.LoanStatus.APPROVED).count();
+        long pendingLoans = allLoans.stream().filter(l -> l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.APPROVED
+                && l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.REJECTED
+                && l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.CANCELLED).count();
+        long rejectedLoans = allLoans.stream().filter(l -> l.getStatus() == com.lankatrust.smartbank.entity.LoanStatus.REJECTED).count();
+        data.put("loanStatusDistribution", java.util.List.of(approvedLoans, pendingLoans, rejectedLoans));
+        data.put("loanApprovedCount", approvedLoans);
+        data.put("loanPendingCount", pendingLoans);
+        data.put("loanRejectedCount", rejectedLoans);
+
+        // Real-time KPIs
+        java.math.BigDecimal totalBalance = allAccounts.stream()
+                .map(com.lankatrust.smartbank.entity.Account::getBalance)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        data.put("totalBalance", totalBalance);
+        data.put("totalAccounts", allAccounts.size());
+        data.put("totalCustomers", allCustomers.size());
+
+        long pendingAccounts = allAccounts.stream()
+                .filter(a -> a.getStatus() == com.lankatrust.smartbank.entity.AccountStatus.PENDING_APPROVAL)
+                .count();
+        data.put("pendingAccounts", pendingAccounts);
+        data.put("pendingLoans", pendingLoans);
+
+        java.time.LocalDateTime startOfDay = java.time.LocalDateTime.of(java.time.LocalDate.now(), java.time.LocalTime.MIN);
+        long todayTxnsCount = allTxns.stream()
+                .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().isAfter(startOfDay))
+                .count();
+        java.math.BigDecimal todayVolume = allTxns.stream()
+                .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().isAfter(startOfDay)
+                        && t.getStatus() == com.lankatrust.smartbank.entity.TransactionStatus.COMPLETED)
+                .map(com.lankatrust.smartbank.entity.Transaction::getAmount)
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        data.put("todayTransactions", todayTxnsCount);
+        data.put("todayVolume", todayVolume);
+
+        return org.springframework.http.ResponseEntity.ok(data);
     }
 
     private void buildManagerChartData(Model model,
@@ -170,7 +306,8 @@ public class DashboardController {
                     .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().isEqual(day))
                     .count();
             java.math.BigDecimal vol = allTxns.stream()
-                    .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().isEqual(day))
+                    .filter(t -> t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().isEqual(day)
+                            && t.getStatus() == com.lankatrust.smartbank.entity.TransactionStatus.COMPLETED)
                     .map(com.lankatrust.smartbank.entity.Transaction::getAmount)
                     .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
             dayLabels.add(day.format(dayFmt));
@@ -187,6 +324,9 @@ public class DashboardController {
         java.util.List<java.math.BigDecimal> monthlyWithdrawals = new java.util.ArrayList<>();
         java.time.format.DateTimeFormatter monthFmt = java.time.format.DateTimeFormatter.ofPattern("MMM yyyy");
 
+        java.math.BigDecimal totalDeposits = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal totalWithdrawals = java.math.BigDecimal.ZERO;
+
         for (int i = 5; i >= 0; i--) {
             java.time.YearMonth ym = java.time.YearMonth.now().minusMonths(i);
             monthLabels.add(ym.format(monthFmt));
@@ -198,6 +338,7 @@ public class DashboardController {
                     .map(com.lankatrust.smartbank.entity.Transaction::getAmount)
                     .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
             monthlyDeposits.add(dep);
+            totalDeposits = totalDeposits.add(dep);
 
             java.math.BigDecimal wdr = allTxns.stream()
                     .filter(t -> t.getType() == com.lankatrust.smartbank.entity.TransactionType.WITHDRAWAL
@@ -206,21 +347,24 @@ public class DashboardController {
                     .map(com.lankatrust.smartbank.entity.Transaction::getAmount)
                     .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
             monthlyWithdrawals.add(wdr);
+            totalWithdrawals = totalWithdrawals.add(wdr);
         }
         model.addAttribute("monthLabels", toJsStringArray(monthLabels));
         model.addAttribute("monthlyDepositData", toJsDecimalArray(monthlyDeposits));
         model.addAttribute("monthlyWithdrawalData", toJsDecimalArray(monthlyWithdrawals));
+        model.addAttribute("isNetPositiveLiquidity", totalDeposits.compareTo(totalWithdrawals) >= 0);
 
         // Account Portfolio breakdown
-        long savings = allAccounts.stream().filter(a -> "SAVINGS".equalsIgnoreCase(a.getAccountType())).count();
-        long current = allAccounts.stream().filter(a -> "CURRENT".equalsIgnoreCase(a.getAccountType())).count();
-        long fd = allAccounts.stream().filter(a -> "FIXED_DEPOSIT".equalsIgnoreCase(a.getAccountType())).count();
+        long savings = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("SAVINGS")).count();
+        long current = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("CURRENT")).count();
+        long fd = allAccounts.stream().filter(a -> a.getAccountType() != null && a.getAccountType().trim().equalsIgnoreCase("FIXED_DEPOSIT")).count();
         model.addAttribute("accountTypeDistribution", "[" + savings + "," + current + "," + fd + "]");
 
         // Loan Portfolio breakdown
         long approvedLoans = allLoans.stream().filter(l -> l.getStatus() == com.lankatrust.smartbank.entity.LoanStatus.APPROVED).count();
         long pendingLoans = allLoans.stream().filter(l -> l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.APPROVED
-                && l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.REJECTED).count();
+                && l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.REJECTED
+                && l.getStatus() != com.lankatrust.smartbank.entity.LoanStatus.CANCELLED).count();
         long rejectedLoans = allLoans.stream().filter(l -> l.getStatus() == com.lankatrust.smartbank.entity.LoanStatus.REJECTED).count();
         model.addAttribute("loanStatusDistribution", "[" + approvedLoans + "," + pendingLoans + "," + rejectedLoans + "]");
     }

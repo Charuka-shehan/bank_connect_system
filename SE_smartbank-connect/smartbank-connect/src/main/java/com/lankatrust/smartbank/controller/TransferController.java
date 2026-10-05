@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 
 @Controller
-@RequiredArgsConstructor
 @RequestMapping("/transfer")
 @PreAuthorize("hasAnyRole('CUSTOMER','BANK_MANAGER')")
 public class TransferController {
@@ -24,6 +23,20 @@ public class TransferController {
     private final BeneficiaryService beneficiaryService;
     private final ValidationService validationService;
     private final OtpService otpService;
+
+    public TransferController(TransactionService transactionService,
+                              AccountService accountService,
+                              UserService userService,
+                              BeneficiaryService beneficiaryService,
+                              ValidationService validationService,
+                              OtpService otpService) {
+        this.transactionService = transactionService;
+        this.accountService = accountService;
+        this.userService = userService;
+        this.beneficiaryService = beneficiaryService;
+        this.validationService = validationService;
+        this.otpService = otpService;
+    }
 
     @GetMapping
     public String transferForm(Authentication authentication, Model model) {
@@ -87,12 +100,22 @@ public class TransferController {
                 validationService.validateBeneficiary(destAccount);
             }
             
+            // Determine if transfer is to a beneficiary
+            String destAccNum = destAccount != null ? destAccount.getAccountNumber() : (destinationAccountId != null ? destinationAccountId.trim() : null);
+            boolean isSavedBeneficiary = beneficiaryService.getForUser(customer.getId()).stream()
+                    .anyMatch(b -> (destAccNum != null && destAccNum.equalsIgnoreCase(b.getBeneficiaryAccountNumber()))
+                            || (destinationAccountId != null && destinationAccountId.trim().equalsIgnoreCase(b.getBeneficiaryAccountNumber()))
+                            || (beneficiaryName != null && !beneficiaryName.isBlank() && b.getBeneficiaryName().equalsIgnoreCase(beneficiaryName.trim())));
+
+            boolean isOwnAccount = destAccount != null && destAccount.getCustomer() != null && destAccount.getCustomer().getId().equals(customer.getId());
+            boolean isBeneficiary = isSavedBeneficiary || !isOwnAccount || destAccount == null || (beneficiaryName != null && !beneficiaryName.isBlank());
+
             // Initiate transfer
             var txn = transactionService.initiateTransfer(sourceAccountId, destAccount != null ? destAccount.getId() : null,
                     beneficiaryName, amount, remarks);
             
-            // Check if OTP is required
-            boolean otpRequired = otpService.isOtpRequired("FUND_TRANSFER", amount, destAccount == null);
+            // Check if OTP is required (either beneficiary transfer, high-value transfer, or pending OTP)
+            boolean otpRequired = !txn.isOtpVerified() || otpService.isOtpRequired("FUND_TRANSFER", amount, isBeneficiary);
             if (otpRequired) {
                 // Generate and send OTP
                 otpService.generateAndSendOtp(customer.getEmail(), "FUND_TRANSFER");

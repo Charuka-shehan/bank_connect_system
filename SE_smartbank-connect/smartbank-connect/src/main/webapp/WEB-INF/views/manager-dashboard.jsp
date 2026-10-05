@@ -381,12 +381,15 @@
                             <a href="<c:url value='/branches'/>" class="btn btn-outline-light px-3 py-2 fw-semibold" style="border-radius: 10px;">
                                 <i class="bi bi-building-gear me-1"></i> Branch Settings
                             </a>
+                            <button type="button" class="btn btn-outline-light px-3 py-2 fw-semibold" id="btnLiveSync" onclick="refreshDashboardData()" style="border-radius: 10px;">
+                                <i class="bi bi-arrow-repeat me-1" id="syncIcon"></i> <span id="syncText">Sync Live Data</span>
+                            </button>
                         </div>
                     </div>
                     <div class="col-lg-4 text-end d-none d-lg-block">
                         <div class="p-3 rounded-4 bg-white bg-opacity-10 border border-white border-opacity-10 text-start" style="backdrop-filter: blur(10px);">
                             <div class="text-white-50 small text-uppercase fw-semibold mb-1">Total Bank Liquidity / Deposits</div>
-                            <div class="h3 fw-bold text-white mb-2">
+                            <div class="h3 fw-bold text-white mb-2" id="heroTotalBalance">
                                 Rs. <fmt:formatNumber value="${totalBalance}" minFractionDigits="2" maxFractionDigits="2"/>
                             </div>
                             <div class="d-flex align-items-center text-success small fw-medium">
@@ -408,7 +411,7 @@
                             <div class="gm-icon-box icon-blue"><i class="bi bi-bank"></i></div>
                         </div>
                         <div>
-                            <div class="gm-kpi-val" style="font-size: 1.35rem;">
+                            <div class="gm-kpi-val" id="kpiTotalBalance" style="font-size: 1.35rem;">
                                 Rs. <fmt:formatNumber value="${totalBalance}" minFractionDigits="0" maxFractionDigits="0"/>
                             </div>
                             <small class="text-success fw-semibold"><i class="bi bi-shield-check me-1"></i>Live Deposits</small>
@@ -424,8 +427,8 @@
                             <div class="gm-icon-box icon-emerald"><i class="bi bi-wallet2"></i></div>
                         </div>
                         <div>
-                            <div class="gm-kpi-val">${totalAccounts != null ? totalAccounts : 0}</div>
-                            <small class="text-muted">${savingsCount} Sav · ${currentCount} Cur · ${fdCount} FD</small>
+                            <div class="gm-kpi-val" id="kpiTotalAccounts">${totalAccounts != null ? totalAccounts : 0}</div>
+                            <small class="text-muted" id="kpiAccountsBreakdown">${savingsCount} Sav · ${currentCount} Cur · ${fdCount} FD</small>
                         </div>
                     </div>
                 </div>
@@ -438,7 +441,7 @@
                             <div class="gm-icon-box icon-cyan"><i class="bi bi-people-fill"></i></div>
                         </div>
                         <div>
-                            <div class="gm-kpi-val">${totalCustomers != null ? totalCustomers : 0}</div>
+                            <div class="gm-kpi-val" id="kpiTotalCustomers">${totalCustomers != null ? totalCustomers : 0}</div>
                             <small class="text-info fw-semibold"><i class="bi bi-person-check me-1"></i>KYC Verified</small>
                         </div>
                     </div>
@@ -453,7 +456,7 @@
                                 <div class="gm-icon-box icon-amber"><i class="bi bi-person-plus"></i></div>
                             </div>
                             <div>
-                                <div class="gm-kpi-val text-warning">${pendingCount != null ? pendingCount : 0}</div>
+                                <div class="gm-kpi-val text-warning" id="kpiPendingAccounts">${pendingCount != null ? pendingCount : 0}</div>
                                 <small class="text-warning fw-semibold"><i class="bi bi-clock-history me-1"></i>Action Required</small>
                             </div>
                         </div>
@@ -469,7 +472,7 @@
                                 <div class="gm-icon-box icon-purple"><i class="bi bi-cash-stack"></i></div>
                             </div>
                             <div>
-                                <div class="gm-kpi-val text-purple" style="color: #8B5CF6;">${pendingLoans != null ? pendingLoans : 0}</div>
+                                <div class="gm-kpi-val text-purple" id="kpiPendingLoans" style="color: #8B5CF6;">${pendingLoans != null ? pendingLoans : 0}</div>
                                 <small class="text-purple fw-semibold"><i class="bi bi-hourglass-split me-1"></i>Credit Sanction</small>
                             </div>
                         </div>
@@ -484,8 +487,8 @@
                             <div class="gm-icon-box icon-rose"><i class="bi bi-arrow-left-right"></i></div>
                         </div>
                         <div>
-                            <div class="gm-kpi-val">${todayTransactions != null ? todayTransactions : 0}</div>
-                            <small class="text-muted">Vol: Rs. <fmt:formatNumber value="${todayVolume}" minFractionDigits="0" maxFractionDigits="0"/></small>
+                            <div class="gm-kpi-val" id="kpiTodayTransactions">${todayTransactions != null ? todayTransactions : 0}</div>
+                            <small class="text-muted" id="kpiTodayVolume">Vol: Rs. <fmt:formatNumber value="${todayVolume}" minFractionDigits="0" maxFractionDigits="0"/></small>
                         </div>
                     </div>
                 </div>
@@ -506,7 +509,7 @@
                                 <button type="button" class="chart-toggle-btn" id="btnModeVolume" onclick="toggleDailyMode('volume')">Volume (LKR)</button>
                             </div>
                         </div>
-                        <div style="height: 290px;">
+                        <div style="position: relative; height: 290px; width: 100%;">
                             <canvas id="dailyVelocityChart"></canvas>
                         </div>
                     </div>
@@ -521,21 +524,21 @@
                                 <small class="text-muted">Share of accounts by product type</small>
                             </div>
                         </div>
-                        <div style="height: 220px; position: relative;">
+                        <div style="position: relative; height: 220px; width: 100%;">
                             <canvas id="accountDonutChart"></canvas>
                         </div>
                         <div class="row text-center mt-3 pt-2 border-top">
                             <div class="col-4">
                                 <span class="d-block small text-muted"><span class="badge rounded-pill bg-primary p-1 me-1"></span>Savings</span>
-                                <strong class="text-dark">${savingsCount}</strong>
+                                <strong class="text-dark" id="legendSavingsCount">${savingsCount}</strong>
                             </div>
                             <div class="col-4">
                                 <span class="d-block small text-muted"><span class="badge rounded-pill bg-success p-1 me-1"></span>Current</span>
-                                <strong class="text-dark">${currentCount}</strong>
+                                <strong class="text-dark" id="legendCurrentCount">${currentCount}</strong>
                             </div>
                             <div class="col-4">
                                 <span class="d-block small text-muted"><span class="badge rounded-pill bg-warning p-1 me-1"></span>Fixed Dep</span>
-                                <strong class="text-dark">${fdCount}</strong>
+                                <strong class="text-dark" id="legendFdCount">${fdCount}</strong>
                             </div>
                         </div>
                     </div>
@@ -552,9 +555,12 @@
                                 <h5 class="gm-card-title"><i class="bi bi-bar-chart-fill text-info"></i> Liquidity Flow: Deposits vs. Withdrawals</h5>
                                 <small class="text-muted">6-month rolling inflows against customer withdrawals (LKR)</small>
                             </div>
-                            <span class="badge bg-success-subtle text-success px-2 py-1"><i class="bi bi-shield-check me-1"></i>Net Positive Liquidity</span>
+                            <span id="liquidityBadge" class="badge ${isNetPositiveLiquidity ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} px-2 py-1">
+                                <i class="bi ${isNetPositiveLiquidity ? 'bi-shield-check' : 'bi-exclamation-triangle'} me-1" id="liquidityBadgeIcon"></i>
+                                <span id="liquidityBadgeText">${isNetPositiveLiquidity ? 'Net Positive Liquidity' : 'Net Outflow Liquidity'}</span>
+                            </span>
                         </div>
-                        <div style="height: 260px;">
+                        <div style="position: relative; height: 260px; width: 100%;">
                             <canvas id="liquidityFlowChart"></canvas>
                         </div>
                     </div>
@@ -569,21 +575,21 @@
                                 <small class="text-muted">Sanction ratio and approval underwriting status</small>
                             </div>
                         </div>
-                        <div style="height: 200px;">
+                        <div style="position: relative; height: 200px; width: 100%;">
                             <canvas id="loanStatusChart"></canvas>
                         </div>
                         <div class="d-flex justify-content-around text-center mt-3 pt-2 border-top">
                             <div>
                                 <span class="small text-muted d-block">Approved</span>
-                                <span class="badge bg-success px-2 py-1">${loanApprovedCount} Sanctioned</span>
+                                <span class="badge bg-success px-2 py-1" id="badgeLoanApproved">${loanApprovedCount} Sanctioned</span>
                             </div>
                             <div>
                                 <span class="small text-muted d-block">Under Review</span>
-                                <span class="badge bg-warning text-dark px-2 py-1">${loanPendingCount} Pending</span>
+                                <span class="badge bg-warning text-dark px-2 py-1" id="badgeLoanPending">${loanPendingCount} Pending</span>
                             </div>
                             <div>
                                 <span class="small text-muted d-block">Rejected</span>
-                                <span class="badge bg-danger px-2 py-1">${loanRejectedCount} Declined</span>
+                                <span class="badge bg-danger px-2 py-1" id="badgeLoanRejected">${loanRejectedCount} Declined</span>
                             </div>
                         </div>
                     </div>
@@ -767,7 +773,21 @@
                                                         </c:choose>
                                                     </td>
                                                     <td class="text-muted small">
-                                                        <c:out value="${tx.account != null ? tx.account.accountNumber : 'N/A'}"/>
+                                                        <c:choose>
+                                                            <c:when test="${tx.sourceAccount != null && tx.destinationAccount != null}">
+                                                                <c:out value="${tx.sourceAccount.accountNumber}"/> &rarr; <c:out value="${tx.destinationAccount.accountNumber}"/>
+                                                            </c:when>
+                                                            <c:when test="${tx.sourceAccount != null}">
+                                                                <c:out value="${tx.sourceAccount.accountNumber}"/>
+                                                                <c:if test="${not empty tx.beneficiaryName}">
+                                                                    <span class="text-secondary">(to <c:out value="${tx.beneficiaryName}"/>)</span>
+                                                                </c:if>
+                                                            </c:when>
+                                                            <c:when test="${tx.destinationAccount != null}">
+                                                                <c:out value="${tx.destinationAccount.accountNumber}"/>
+                                                            </c:when>
+                                                            <c:otherwise>N/A</c:otherwise>
+                                                        </c:choose>
                                                     </td>
                                                     <td class="fw-bold ${tx.type == 'DEPOSIT' ? 'text-success' : 'text-dark'}">
                                                         ${tx.type == 'DEPOSIT' ? '+' : '-'} Rs. <fmt:formatNumber value="${tx.amount}" minFractionDigits="2" maxFractionDigits="2"/>
@@ -858,10 +878,26 @@
 </div>
 
 <!-- ============================= CHART.JS SCRIPTS ============================= -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+    .spin-animation { animation: gmSpin 0.8s linear infinite; }
+    @keyframes gmSpin { 100% { transform: rotate(360deg); } }
+</style>
+<!-- Primary: Local Bundled Chart.js with CDN Fallback -->
+<script src="<c:url value='/js/chart.umd.min.js'/>"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Theme Colors
+    if (typeof Chart === 'undefined') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"><\/script>');
+    }
+</script>
+<script>
+(function() {
+    function initManagerCharts() {
+        if (typeof Chart === 'undefined') {
+            console.error("Chart.js failed to load.");
+            return;
+        }
+
+        // Palette
         var palette = {
             primary: '#1814F3',
             primaryLight: 'rgba(24, 20, 243, 0.08)',
@@ -878,80 +914,130 @@
         Chart.defaults.font.family = "'Inter', sans-serif";
         Chart.defaults.color = palette.text;
 
-        // Data series from server with safe fallbacks
-        var dailyLabels = ${dailyTxnLabels != null ? dailyTxnLabels : "['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']"};
-        var dailyCounts = ${dailyTxnCounts != null ? dailyTxnCounts : "[4, 8, 5, 9, 14, 11, 15]"};
-        var dailyVolumes = ${dailyTxnVolumes != null ? dailyTxnVolumes : "[45000, 82000, 50000, 95000, 140000, 110000, 150000]"};
+        // Custom plugin to show clean empty ring when doughnut data is [0, 0, 0]
+        var emptyDoughnutPlugin = {
+            id: 'emptyDoughnutPlugin',
+            afterDraw: function(chart) {
+                if (chart.config.type !== 'doughnut') return;
+                var datasets = chart.data.datasets;
+                if (!datasets || datasets.length === 0) return;
+                var total = datasets[0].data.reduce(function(a, b) { return a + Number(b || 0); }, 0);
+                if (total === 0) {
+                    var ctx = chart.ctx;
+                    var chartArea = chart.chartArea;
+                    if (!chartArea) return;
+                    var centerX = (chartArea.left + chartArea.right) / 2;
+                    var centerY = (chartArea.top + chartArea.bottom) / 2;
+                    var outerRadius = Math.min(chartArea.width, chartArea.height) / 2 - 4;
+                    var innerRadius = outerRadius * 0.70;
 
-        var monthLabels = ${monthLabels != null ? monthLabels : "['Apr 2026', 'May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026', 'Sep 2026']"};
-        var monthlyDeposits = ${monthlyDepositData != null ? monthlyDepositData : "[120000, 180000, 220000, 190000, 240000, 280000]"};
-        var monthlyWithdrawals = ${monthlyWithdrawalData != null ? monthlyWithdrawalData : "[60000, 90000, 110000, 95000, 120000, 130000]"};
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI, false);
+                    ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI, true);
+                    ctx.fillStyle = '#F1F5F9';
+                    ctx.fill();
 
-        var accountDist = ${accountTypeDistribution != null ? accountTypeDistribution : "[1, 0, 0]"};
-        if (accountDist.reduce((a, b) => a + b, 0) === 0) {
-            accountDist = [1, 0, 0];
-        }
-
-        var loanDist = ${loanStatusDistribution != null ? loanStatusDistribution : "[1, 0, 0]"};
-        if (loanDist.reduce((a, b) => a + b, 0) === 0) {
-            loanDist = [1, 0, 0];
-        }
-
-        // ======================== 1. DAILY VELOCITY CHART ========================
-        var ctxVelocity = document.getElementById('dailyVelocityChart').getContext('2d');
-        var velocityChart = new Chart(ctxVelocity, {
-            type: 'line',
-            data: {
-                labels: dailyLabels,
-                datasets: [{
-                    label: 'Transaction Count',
-                    data: dailyCounts,
-                    borderColor: palette.primary,
-                    backgroundColor: palette.primaryLight,
-                    borderWidth: 2.8,
-                    tension: 0.35,
-                    fill: true,
-                    pointBackgroundColor: '#FFFFFF',
-                    pointBorderColor: palette.primary,
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#0F172A',
-                        padding: 10,
-                        titleFont: { size: 12, weight: 'bold' },
-                        bodyFont: { size: 13 }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: palette.grid, drawBorder: false },
-                        ticks: { precision: 0 }
-                    },
-                    x: {
-                        grid: { display: false, drawBorder: false }
-                    }
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = '600 13px Inter, sans-serif';
+                    ctx.fillStyle = '#64748B';
+                    ctx.fillText('0 Records', centerX, centerY - 8);
+                    ctx.font = '400 11px Inter, sans-serif';
+                    ctx.fillStyle = '#94A3B8';
+                    ctx.fillText('No data recorded', centerX, centerY + 10);
+                    ctx.restore();
                 }
             }
-        });
+        };
+        Chart.register(emptyDoughnutPlugin);
+
+        // Initial Data series from server via raw JSON
+        var dailyLabels = <c:out value="${dailyTxnLabels != null ? dailyTxnLabels : '[]'}" escapeXml="false"/>;
+        var dailyCounts = <c:out value="${dailyTxnCounts != null ? dailyTxnCounts : '[]'}" escapeXml="false"/>;
+        var dailyVolumes = <c:out value="${dailyTxnVolumes != null ? dailyTxnVolumes : '[]'}" escapeXml="false"/>;
+
+        var monthLabels = <c:out value="${monthLabels != null ? monthLabels : '[]'}" escapeXml="false"/>;
+        var monthlyDeposits = <c:out value="${monthlyDepositData != null ? monthlyDepositData : '[]'}" escapeXml="false"/>;
+        var monthlyWithdrawals = <c:out value="${monthlyWithdrawalData != null ? monthlyWithdrawalData : '[]'}" escapeXml="false"/>;
+
+        var accountDist = <c:out value="${accountTypeDistribution != null ? accountTypeDistribution : '[0,0,0]'}" escapeXml="false"/>;
+        var loanDist = <c:out value="${loanStatusDistribution != null ? loanStatusDistribution : '[0,0,0]'}" escapeXml="false"/>;
+
+        var currentDailyMode = 'count';
+
+        // ======================== 1. DAILY VELOCITY CHART ========================
+        var canvasVelocity = document.getElementById('dailyVelocityChart');
+        var velocityChart = null;
+        if (canvasVelocity) {
+            velocityChart = new Chart(canvasVelocity.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: dailyLabels,
+                    datasets: [{
+                        label: 'Transaction Count',
+                        data: dailyCounts,
+                        borderColor: palette.primary,
+                        backgroundColor: palette.primaryLight,
+                        borderWidth: 2.8,
+                        tension: 0.35,
+                        fill: true,
+                        pointBackgroundColor: '#FFFFFF',
+                        pointBorderColor: palette.primary,
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            padding: 10,
+                            titleFont: { size: 12, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(c) {
+                                    if (currentDailyMode === 'volume') {
+                                        return 'Volume: Rs. ' + Number(c.raw || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                    }
+                                    return 'Count: ' + (c.raw || 0) + ' txns';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: palette.grid, drawBorder: false },
+                            ticks: { precision: 0 }
+                        },
+                        x: {
+                            grid: { display: false, drawBorder: false }
+                        }
+                    }
+                }
+            });
+        }
 
         window.toggleDailyMode = function(mode) {
-            document.getElementById('btnModeCount').classList.toggle('active', mode === 'count');
-            document.getElementById('btnModeVolume').classList.toggle('active', mode === 'volume');
+            currentDailyMode = mode;
+            var btnCount = document.getElementById('btnModeCount');
+            var btnVol = document.getElementById('btnModeVolume');
+            if (btnCount) btnCount.classList.toggle('active', mode === 'count');
+            if (btnVol) btnVol.classList.toggle('active', mode === 'volume');
+
+            if (!velocityChart) return;
 
             if (mode === 'volume') {
                 velocityChart.data.datasets[0].label = 'Transaction Volume (LKR)';
                 velocityChart.data.datasets[0].data = dailyVolumes;
                 velocityChart.data.datasets[0].borderColor = palette.purple;
                 velocityChart.data.datasets[0].backgroundColor = 'rgba(139, 92, 246, 0.08)';
+                velocityChart.options.scales.y.ticks.precision = 2;
                 velocityChart.options.scales.y.ticks.callback = function(val) {
                     return 'Rs. ' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val);
                 };
@@ -960,121 +1046,261 @@
                 velocityChart.data.datasets[0].data = dailyCounts;
                 velocityChart.data.datasets[0].borderColor = palette.primary;
                 velocityChart.data.datasets[0].backgroundColor = palette.primaryLight;
+                velocityChart.options.scales.y.ticks.precision = 0;
                 velocityChart.options.scales.y.ticks.callback = function(val) { return val; };
             }
             velocityChart.update();
         };
 
         // ======================== 2. ACCOUNT PORTFOLIO DONUT ========================
-        var ctxDonut = document.getElementById('accountDonutChart').getContext('2d');
-        new Chart(ctxDonut, {
-            type: 'doughnut',
-            data: {
-                labels: ['Savings Account', 'Current Account', 'Fixed Deposit'],
-                datasets: [{
-                    data: accountDist,
-                    backgroundColor: [palette.primary, palette.emerald, palette.amber],
-                    borderWidth: 3,
-                    borderColor: '#FFFFFF',
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '72%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#0F172A',
-                        padding: 10
+        var canvasDonut = document.getElementById('accountDonutChart');
+        var accountDonutChart = null;
+        if (canvasDonut) {
+            accountDonutChart = new Chart(canvasDonut.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Savings Account', 'Current Account', 'Fixed Deposit'],
+                    datasets: [{
+                        data: accountDist,
+                        backgroundColor: [palette.primary, palette.emerald, palette.amber],
+                        borderWidth: 3,
+                        borderColor: '#FFFFFF',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            padding: 10,
+                            callbacks: {
+                                label: function(c) {
+                                    var total = c.dataset.data.reduce(function(a, b) { return a + Number(b || 0); }, 0);
+                                    var pct = total > 0 ? ((c.raw / total) * 100).toFixed(1) + '%' : '0%';
+                                    return c.label + ': ' + c.raw + ' accounts (' + pct + ')';
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // ======================== 3. LIQUIDITY FLOW BAR CHART ========================
-        var ctxLiquidity = document.getElementById('liquidityFlowChart').getContext('2d');
-        new Chart(ctxLiquidity, {
-            type: 'bar',
-            data: {
-                labels: monthLabels,
-                datasets: [
-                    {
-                        label: 'Deposits (Inflows)',
-                        data: monthlyDeposits,
-                        backgroundColor: palette.emerald,
-                        borderRadius: 6,
-                        barPercentage: 0.6,
-                        categoryPercentage: 0.8
-                    },
-                    {
-                        label: 'Withdrawals (Outflows)',
-                        data: monthlyWithdrawals,
-                        backgroundColor: palette.rose,
-                        borderRadius: 6,
-                        barPercentage: 0.6,
-                        categoryPercentage: 0.8
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        align: 'end',
-                        labels: { boxWidth: 12, usePointStyle: true, pointStyle: 'circle' }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(c) {
-                                return c.dataset.label + ': Rs. ' + Number(c.raw).toLocaleString();
-                            }
+        var canvasLiquidity = document.getElementById('liquidityFlowChart');
+        var liquidityFlowChart = null;
+        if (canvasLiquidity) {
+            liquidityFlowChart = new Chart(canvasLiquidity.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: monthLabels,
+                    datasets: [
+                        {
+                            label: 'Deposits (Inflows)',
+                            data: monthlyDeposits,
+                            backgroundColor: palette.emerald,
+                            borderRadius: 6,
+                            barPercentage: 0.6,
+                            categoryPercentage: 0.8
+                        },
+                        {
+                            label: 'Withdrawals (Outflows)',
+                            data: monthlyWithdrawals,
+                            backgroundColor: palette.rose,
+                            borderRadius: 6,
+                            barPercentage: 0.6,
+                            categoryPercentage: 0.8
                         }
-                    }
+                    ]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: palette.grid, drawBorder: false },
-                        ticks: {
-                            callback: function(val) {
-                                return 'Rs. ' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val);
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            align: 'end',
+                            labels: { boxWidth: 12, usePointStyle: true, pointStyle: 'circle' }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            padding: 10,
+                            callbacks: {
+                                label: function(c) {
+                                    return c.dataset.label + ': Rs. ' + Number(c.raw || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                }
                             }
                         }
                     },
-                    x: {
-                        grid: { display: false, drawBorder: false }
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: palette.grid, drawBorder: false },
+                            ticks: {
+                                callback: function(val) {
+                                    return 'Rs. ' + (val >= 1000 ? (val / 1000).toFixed(0) + 'k' : val);
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false, drawBorder: false }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // ======================== 4. LOAN STATUS DOUGHNUT ========================
-        var ctxLoans = document.getElementById('loanStatusChart').getContext('2d');
-        new Chart(ctxLoans, {
-            type: 'doughnut',
-            data: {
-                labels: ['Approved', 'Pending Underwriting', 'Rejected'],
-                datasets: [{
-                    data: loanDist,
-                    backgroundColor: [palette.emerald, palette.amber, palette.rose],
-                    borderWidth: 3,
-                    borderColor: '#FFFFFF'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '68%',
-                plugins: {
-                    legend: { display: false }
+        var canvasLoans = document.getElementById('loanStatusChart');
+        var loanStatusChart = null;
+        if (canvasLoans) {
+            loanStatusChart = new Chart(canvasLoans.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Approved', 'Under Review', 'Rejected'],
+                    datasets: [{
+                        data: loanDist,
+                        backgroundColor: [palette.emerald, palette.amber, palette.rose],
+                        borderWidth: 3,
+                        borderColor: '#FFFFFF'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            padding: 10,
+                            callbacks: {
+                                label: function(c) {
+                                    var total = c.dataset.data.reduce(function(a, b) { return a + Number(b || 0); }, 0);
+                                    var pct = total > 0 ? ((c.raw / total) * 100).toFixed(1) + '%' : '0%';
+                                    return c.label + ': ' + c.raw + ' loans (' + pct + ')';
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-        });
-    });
+            });
+        }
+
+        // ======================== REAL-TIME DATA REFRESH & POLLING ========================
+        window.refreshDashboardData = function() {
+            var syncIcon = document.getElementById('syncIcon');
+            var syncText = document.getElementById('syncText');
+            if (syncIcon) syncIcon.classList.add('spin-animation');
+            if (syncText) syncText.textContent = 'Updating...';
+
+            fetch('<c:url value="/manager/api/chart-data"/>', {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(function(res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(function(data) {
+                // 1. Velocity Chart
+                dailyLabels = data.dailyTxnLabels || [];
+                dailyCounts = data.dailyTxnCounts || [];
+                dailyVolumes = data.dailyTxnVolumes || [];
+                if (velocityChart) {
+                    velocityChart.data.labels = dailyLabels;
+                    velocityChart.data.datasets[0].data = (currentDailyMode === 'volume') ? dailyVolumes : dailyCounts;
+                    velocityChart.update();
+                }
+
+                // 2. Account Portfolio Chart
+                accountDist = data.accountTypeDistribution || [0, 0, 0];
+                if (accountDonutChart) {
+                    accountDonutChart.data.datasets[0].data = accountDist;
+                    accountDonutChart.update();
+                }
+                if (document.getElementById('legendSavingsCount')) document.getElementById('legendSavingsCount').textContent = data.savingsCount || 0;
+                if (document.getElementById('legendCurrentCount')) document.getElementById('legendCurrentCount').textContent = data.currentCount || 0;
+                if (document.getElementById('legendFdCount')) document.getElementById('legendFdCount').textContent = data.fdCount || 0;
+
+                // 3. Liquidity Flow Chart
+                monthLabels = data.monthLabels || [];
+                monthlyDeposits = data.monthlyDepositData || [];
+                monthlyWithdrawals = data.monthlyWithdrawalData || [];
+                if (liquidityFlowChart) {
+                    liquidityFlowChart.data.labels = monthLabels;
+                    liquidityFlowChart.data.datasets[0].data = monthlyDeposits;
+                    liquidityFlowChart.data.datasets[1].data = monthlyWithdrawals;
+                    liquidityFlowChart.update();
+                }
+                var liqBadge = document.getElementById('liquidityBadge');
+                var liqIcon = document.getElementById('liquidityBadgeIcon');
+                var liqText = document.getElementById('liquidityBadgeText');
+                if (liqBadge && liqText) {
+                    if (data.isNetPositiveLiquidity) {
+                        liqBadge.className = 'badge bg-success-subtle text-success px-2 py-1';
+                        if (liqIcon) liqIcon.className = 'bi bi-shield-check me-1';
+                        liqText.textContent = 'Net Positive Liquidity';
+                    } else {
+                        liqBadge.className = 'badge bg-danger-subtle text-danger px-2 py-1';
+                        if (liqIcon) liqIcon.className = 'bi bi-exclamation-triangle me-1';
+                        liqText.textContent = 'Net Outflow Liquidity';
+                    }
+                }
+
+                // 4. Loan Status Chart
+                loanDist = data.loanStatusDistribution || [0, 0, 0];
+                if (loanStatusChart) {
+                    loanStatusChart.data.datasets[0].data = loanDist;
+                    loanStatusChart.update();
+                }
+                if (document.getElementById('badgeLoanApproved')) document.getElementById('badgeLoanApproved').textContent = (data.loanApprovedCount || 0) + ' Sanctioned';
+                if (document.getElementById('badgeLoanPending')) document.getElementById('badgeLoanPending').textContent = (data.loanPendingCount || 0) + ' Pending';
+                if (document.getElementById('badgeLoanRejected')) document.getElementById('badgeLoanRejected').textContent = (data.loanRejectedCount || 0) + ' Declined';
+
+                // 5. KPI Cards
+                if (document.getElementById('kpiTotalBalance') && data.totalBalance != null) {
+                    document.getElementById('kpiTotalBalance').textContent = 'Rs. ' + Number(data.totalBalance).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+                }
+                if (document.getElementById('heroTotalBalance') && data.totalBalance != null) {
+                    document.getElementById('heroTotalBalance').textContent = 'Rs. ' + Number(data.totalBalance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                }
+                if (document.getElementById('kpiTotalAccounts')) document.getElementById('kpiTotalAccounts').textContent = data.totalAccounts || 0;
+                if (document.getElementById('kpiAccountsBreakdown')) {
+                    document.getElementById('kpiAccountsBreakdown').textContent = (data.savingsCount || 0) + ' Sav · ' + (data.currentCount || 0) + ' Cur · ' + (data.fdCount || 0) + ' FD';
+                }
+                if (document.getElementById('kpiTotalCustomers')) document.getElementById('kpiTotalCustomers').textContent = data.totalCustomers || 0;
+                if (document.getElementById('kpiPendingAccounts')) document.getElementById('kpiPendingAccounts').textContent = data.pendingAccounts || 0;
+                if (document.getElementById('kpiPendingLoans')) document.getElementById('kpiPendingLoans').textContent = data.pendingLoans || 0;
+                if (document.getElementById('kpiTodayTransactions')) document.getElementById('kpiTodayTransactions').textContent = data.todayTransactions || 0;
+                if (document.getElementById('kpiTodayVolume') && data.todayVolume != null) {
+                    document.getElementById('kpiTodayVolume').textContent = 'Vol: Rs. ' + Number(data.todayVolume).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+                }
+
+                if (syncText) syncText.textContent = 'Live Synced';
+            })
+            .catch(function(err) {
+                console.warn('Dashboard live update note:', err);
+                if (syncText) syncText.textContent = 'Sync Live Data';
+            })
+            .finally(function() {
+                if (syncIcon) syncIcon.classList.remove('spin-animation');
+            });
+        };
+
+        // Live background sync every 15 seconds
+        setInterval(window.refreshDashboardData, 15000);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener("DOMContentLoaded", initManagerCharts);
+    } else {
+        initManagerCharts();
+    }
+})();
 </script>
 </body>
 </html>

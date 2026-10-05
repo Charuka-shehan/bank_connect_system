@@ -26,7 +26,6 @@ import java.util.List;
  * -> funds moved -> notification sent (Section 6.2, Process Flow).
  */
 @Service
-@RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
@@ -37,6 +36,27 @@ public class TransactionServiceImpl implements TransactionService {
     private final NotificationService notificationService;
     private final UserService userService;
     private final com.lankatrust.smartbank.service.OtpService otpService;
+    private final com.lankatrust.smartbank.repository.BeneficiaryRepository beneficiaryRepository;
+
+    public TransactionServiceImpl(TransactionRepository transactionRepository,
+                                  AccountRepository accountRepository,
+                                  ApprovalRequestRepository approvalRequestRepository,
+                                  TransactionCorrectionRepository transactionCorrectionRepository,
+                                  AuditLogService auditLogService,
+                                  NotificationService notificationService,
+                                  UserService userService,
+                                  com.lankatrust.smartbank.service.OtpService otpService,
+                                  com.lankatrust.smartbank.repository.BeneficiaryRepository beneficiaryRepository) {
+        this.transactionRepository = transactionRepository;
+        this.accountRepository = accountRepository;
+        this.approvalRequestRepository = approvalRequestRepository;
+        this.transactionCorrectionRepository = transactionCorrectionRepository;
+        this.auditLogService = auditLogService;
+        this.notificationService = notificationService;
+        this.userService = userService;
+        this.otpService = otpService;
+        this.beneficiaryRepository = beneficiaryRepository;
+    }
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -67,7 +87,25 @@ public class TransactionServiceImpl implements TransactionService {
                     .orElseThrow(() -> new IllegalArgumentException("Destination account not found"));
         }
 
-        boolean requiresOtp = otpService.isOtpRequired("FUND_TRANSFER", amount, destinationAccountId == null);
+        boolean isOwnAccount = destination != null
+                && source.getCustomer() != null
+                && destination.getCustomer() != null
+                && source.getCustomer().getId().equals(destination.getCustomer().getId());
+
+        boolean isSavedBeneficiary = false;
+        if (source.getCustomer() != null) {
+            String destAccNum = destination != null ? destination.getAccountNumber() : null;
+            isSavedBeneficiary = beneficiaryRepository.findByUserId(source.getCustomer().getId()).stream()
+                    .anyMatch(b -> (destAccNum != null && destAccNum.equalsIgnoreCase(b.getBeneficiaryAccountNumber()))
+                            || (beneficiaryName != null && !beneficiaryName.isBlank() && b.getBeneficiaryName().equalsIgnoreCase(beneficiaryName.trim())));
+        }
+
+        boolean isBeneficiary = isSavedBeneficiary
+                || destination == null
+                || !isOwnAccount
+                || (beneficiaryName != null && !beneficiaryName.isBlank());
+
+        boolean requiresOtp = otpService.isOtpRequired("FUND_TRANSFER", amount, isBeneficiary);
 
         Transaction txn = Transaction.builder()
                 .referenceNumber(generateReference())
@@ -84,8 +122,11 @@ public class TransactionServiceImpl implements TransactionService {
 
         if (requiresOtp) {
             // Do not send OTP here; the controller is responsible for initiating OTP workflows.
+            String logDetail = isBeneficiary
+                    ? "Transfer to beneficiary " + (beneficiaryName != null ? beneficiaryName : "account") + " of Rs. " + amount + " requires OTP verification"
+                    : "High-value transfer of Rs. " + amount + " requires OTP verification";
             auditLogService.log(source.getCustomer().getEmail(), "TRANSFER_OTP_REQUIRED", "Transaction",
-                    saved.getId(), "High-value transfer of Rs. " + amount + " requires OTP verification");
+                    saved.getId(), logDetail);
         } else {
             saved = completeTransfer(saved);
         }

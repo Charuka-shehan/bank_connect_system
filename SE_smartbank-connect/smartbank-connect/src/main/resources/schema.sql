@@ -22,6 +22,7 @@ DROP TABLE IF EXISTS transfers;
 DROP TABLE IF EXISTS beneficiaries;
 DROP TABLE IF EXISTS atm_cards;
 DROP TABLE IF EXISTS customer_documents;
+DROP TABLE IF EXISTS staff_creation_requests;
 DROP TABLE IF EXISTS approval_requests;
 DROP TABLE IF EXISTS accounts;
 DROP TABLE IF EXISTS officers;
@@ -173,13 +174,37 @@ CREATE TABLE approval_requests (
   requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   approved_by BIGINT NULL,
   approved_at DATETIME NULL,
+  rejected_at DATETIME NULL,
+  rejection_reason VARCHAR(500),
   remarks VARCHAR(500),
+  execution_status VARCHAR(30) DEFAULT 'PENDING',
+  executed_at DATETIME NULL,
+  requested_data VARCHAR(1000),
+  current_data VARCHAR(1000),
+  version BIGINT NOT NULL DEFAULT 0,
   CONSTRAINT fk_approval_requests_requester FOREIGN KEY (requester_id) REFERENCES users(id),
   CONSTRAINT fk_approval_requests_approver FOREIGN KEY (approved_by) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_approval_requests_status ON approval_requests(status);
 CREATE INDEX idx_approval_requests_type ON approval_requests(request_type);
+
+-- staff_creation_requests
+CREATE TABLE staff_creation_requests (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  full_name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(30) NOT NULL,
+  nic VARCHAR(30),
+  employee_id VARCHAR(50),
+  phone VARCHAR(20),
+  branch VARCHAR(100),
+  requested_by BIGINT NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_staff_creation_requests_requester FOREIGN KEY (requested_by) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- beneficiaries
 CREATE TABLE beneficiaries (
